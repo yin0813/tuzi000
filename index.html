@@ -61,6 +61,130 @@
 </head>
 
 <body>
+    <!-- ================= 🔴 防盗门禁系统开始 ================= -->
+    <div id="activation-modal" style="display:flex; position:fixed; inset:0; z-index:99999; background:#FFFDF5; flex-direction:column; align-items:center; justify-content:center; padding:20px; font-family: sans-serif;">
+        <div style="text-align:center; margin-bottom:30px;">
+            <!-- 这里可以换成你的 LOGO 或者软件名 -->
+            <h2 style="font-size:24px; color:#5D4037; font-weight:800; margin-bottom:10px;">Talk小手机</h2>
+            <p style="color:#8D6E63; font-size:14px;">请输入激活码以解锁完整体验</p>
+        </div>
+        
+        <input type="text" id="activation-input" placeholder="请输入激活码" 
+               style="width:80%; max-width:300px; padding:15px; border:2px solid #F0E6D2; border-radius:16px; margin-bottom:20px; outline:none; text-align:center; font-size:18px; color:#5D4037; font-weight:bold; background:white;">
+        
+        <button onclick="handleVerify()" id="verify-btn"
+                style="width:80%; max-width:300px; padding:15px; background:#FFCA28; color:#5D4037; font-weight:800; border-radius:16px; border:none; box-shadow:0 4px 15px rgba(255,202,40,0.4); font-size:16px; cursor:pointer; transition: transform 0.1s;">
+            立即激活
+        </button>
+        
+        <p id="error-msg" style="color:#EF5350; margin-top:20px; font-size:14px; min-height:20px; font-weight:bold;"></p>
+        
+        <div style="margin-top:40px; text-align:center; font-size:12px; color:#A1887F;">
+            <p>还没有激活码？</p>
+            <!-- 👇👇👇 把下面这个 # 改成你的微信号或者发卡网链接 👇👇👇 -->
+            <a href="https://xhslink.com/m/4vgclIi4JIa" target="_blank" rel="noopener noreferrer" style="color:#FFCA28; font-weight:bold; text-decoration:none; border-bottom: 2px solid #FFCA28;">点击获取 / 联系作者</a>
+        </div>
+    </div>
+    
+    <script>
+        // 1. 配置你的后端地址 (就是刚才你发给我的那个链接)
+        const API_URL = "https://polished-dust-3aaa.2785142729.workers.dev/api/verify";
+    
+        // 2. 获取设备唯一指纹 (Device ID)
+        // 如果是第一次来，就随机生成一个存起来；如果是老用户，就读取旧的
+        function getDeviceId() {
+            let id = localStorage.getItem('bear_device_id');
+            if (!id) {
+                // 生成一个随机ID
+                id = 'dev_' + Date.now().toString(36) + Math.random().toString(36).substr(2);
+                localStorage.setItem('bear_device_id', id);
+            }
+            return id;
+        }
+    
+        // 3. 检查门禁状态 (一打开网页就自动运行)
+        (function checkGate() {
+            // 检查本地有没有“通行证”
+            const isActivated = localStorage.getItem('bear_is_activated');
+            const modal = document.getElementById('activation-modal');
+            
+            if (isActivated === 'true') {
+                // 有通行证，隐藏防盗门
+                modal.style.display = 'none';
+            } else {
+                // 没有通行证，显示防盗门 (强制覆盖)
+                modal.style.display = 'flex';
+            }
+        })();
+    
+        // 4. 点击激活按钮时触发的函数
+        async function handleVerify() {
+            const input = document.getElementById('activation-input');
+            const btn = document.getElementById('verify-btn');
+            const msg = document.getElementById('error-msg');
+            
+            const code = input.value.trim();
+            const deviceId = getDeviceId();
+    
+            // 简单校验
+            if (!code) {
+                msg.innerText = "请先输入激活码";
+                return;
+            }
+    
+            // 按钮变状态，防止重复点击
+            btn.innerText = "验证中...";
+            btn.disabled = true;
+            btn.style.opacity = "0.7";
+            msg.innerText = "";
+    
+            try {
+                // 向你的 Cloudflare 后端发送请求
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        code: code,
+                        deviceId: deviceId
+                    })
+                });
+    
+                const data = await response.json();
+    
+                if (data.success) {
+                    // === 成功 ===
+                    msg.style.color = "#4CAF50";
+                    msg.innerText = "✅ " + data.msg;
+                    
+                    // 发放本地通行证
+                    localStorage.setItem('bear_is_activated', 'true');
+                    if (window.TFAnalytics) { TFAnalytics.init(); TFAnalytics.track('activation'); }
+
+                    // 1秒后进入软件
+                    setTimeout(() => {
+                        document.getElementById('activation-modal').style.display = 'none';
+                    }, 1000);
+                } else {
+                    // === 失败 ===
+                    msg.style.color = "#EF5350";
+                    msg.innerText = "❌ " + data.msg;
+                    btn.innerText = "立即激活";
+                    btn.disabled = false;
+                    btn.style.opacity = "1";
+                }
+    
+            } catch (err) {
+                console.error(err);
+                msg.style.color = "#EF5350";
+                msg.innerText = "⚠️ 网络连接失败，请检查网络";
+                btn.innerText = "立即激活";
+                btn.disabled = false;
+                btn.style.opacity = "1";
+            }
+        }
+    </script>
+    <!-- ================= 🔴 防盗门禁系统结束 ================= -->
+
     <div id="app" v-cloak
         class="h-screen w-full bg-[#FFFDF5] relative overflow-hidden flex flex-col">
 
